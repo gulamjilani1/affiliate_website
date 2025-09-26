@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>All Products</h2>
+<form method="get" action="{{ url_for('products') }}" class="row mb-3">
+  <div class="col-md-6"><input name="q" value="{{ request.args.get('q','') }}" class="form-control" placeholder="Search"></div>
+  <div class="col-md-3"><select name="category" class="form-select"><option value="">All</option>{% for c in categories %}<option value="{{ c }}" {% if request.args.get('category')==c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><button class="btn btn-primary w-100">Filter</button></div>
+</form>
+
+<div class="row">
+  {% for p in products %}
+  <div class="col-md-3 mb-3">
+    <div class="card h-100">
+      <img src="{{ p.image if p.image and 'http' in p.image else url_for('static', filename='images/' + (p.image or 'placeholder.png')) }}" class="card-img-top" style="height:140px;object-fit:cover;">
+      <div class="card-body">
+        <h6 class="card-title">{{ p.name }}</h6>
+        <p class="mb-1">₹{{ '%.2f'|format(p.price) }}</p>
+        <a href="{{ url_for('product_detail', product_id=p.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+        <a href="{{ url_for('track', product_id=p.id) }}" class="btn btn-sm btn-success ms-1">Buy</a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+    <p>No products found.</p>
+  {% endfor %}
+</div>
+{% endblock %}

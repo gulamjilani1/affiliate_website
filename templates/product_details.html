@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-md-5">
+    <img src="{{ product.image if product.image and 'http' in product.image else url_for('static', filename='images/' + (product.image or 'placeholder.png')) }}" class="img-fluid">
+  </div>
+  <div class="col-md-7">
+    <h2>{{ product.name }}</h2>
+    <p>{{ product.description }}</p>
+    <p><strong>Price:</strong> ₹{{ '%.2f'|format(product.price) }}</p>
+    <a href="{{ url_for('track', product_id=product.id) }}" class="btn btn-success">Buy Now</a>
+    <a href="{{ url_for('products') }}" class="btn btn-secondary ms-2">Back</a>
+  </div>
+</div>
+{% endblock %}

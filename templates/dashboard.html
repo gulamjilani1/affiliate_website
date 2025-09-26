@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+<div class="mb-3 d-flex gap-2">
+  <a class="btn btn-success" href="{{ url_for('add_edit_product') }}">Add Product</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('import_products') }}">Import CSV</a>
+</div>
+
+<div class="row">
+  {% for p in products %}
+  <div class="col-md-4 mb-3">
+    <div class="card">
+      <div class="card-body">
+        <h5>{{ p.name }}</h5>
+        <p>₹{{ '%.2f'|format(p.price) }}</p>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('add_edit_product', product_id=p.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('delete_product', product_id=p.id) }}" class="d-inline" onsubmit="return confirm('Delete?');">
+          <button class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

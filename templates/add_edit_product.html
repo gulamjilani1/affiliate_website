@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>{{ action }} Product</h3>
+<form method="post" enctype="multipart/form-data">
+  <div class="mb-2"><input name="name" class="form-control" placeholder="Name" value="{{ product.name if product else '' }}" required></div>
+  <div class="mb-2"><input name="price" class="form-control" placeholder="Price" value="{{ product.price if product else '' }}"></div>
+  <div class="mb-2"><input name="category" class="form-control" placeholder="Category" value="{{ product.category if product else '' }}"></div>
+  <div class="mb-2"><input name="link" class="form-control" placeholder="Affiliate link" value="{{ product.link if product else '' }}" required></div>
+  <div class="mb-2"><textarea name="description" class="form-control" placeholder="Description">{{ product.description if product else '' }}</textarea></div>
+  <div class="mb-2"><input type="file" name="image" class="form-control"></div>
+  <div class="mb-2"><input name="image_url" class="form-control" placeholder="Or image URL" value=""></div>
+  <button class="btn btn-primary">{{ action }}</button>
+  <a class="btn btn-secondary ms-2" href="{{ url_for('dashboard') }}">Cancel</a>
+</form>
+{% endblock %}
