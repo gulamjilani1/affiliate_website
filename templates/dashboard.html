@@ -5,6 +5,11 @@
   <a class="btn btn-success" href="{{ url_for('add_edit_product') }}">Add Product</a>
   <a class="btn btn-outline-primary" href="{{ url_for('import_products') }}">Import CSV</a>
 </div>
+{% if session.get("role") == "admin" %}
+  <a href="{{ url_for('change_password') }}" class="btn btn-warning mb-3">
+    Change Password
+  </a>
+{% endif %}
 
 <div class="row">
   {% for p in products %}

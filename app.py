@@ -8,7 +8,7 @@ from utils import allowed_file, save_image
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
-# load .env
+# Load .env
 load_dotenv()
 
 # Config
@@ -18,19 +18,50 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = os.path.join("static", "images")
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 
+# Security best practices
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = False  # local test, set True in production
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 db.init_app(app)
 
-# DB init & default admin (safe)
+# DB init & default admin
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username="admin").first():
         admin = User(username="admin")
-        admin.set_password("admin")
+        admin_password = os.getenv("ADMIN_PASSWORD", "ChangeMe123!")
+        admin.set_password(admin_password)   # ✅ यहीं set_password() use करना है
         db.session.add(admin)
         db.session.commit()
-        print("Created default admin /admin (change immediately)")
+        print(f"Created default admin with username=admin and password={admin_password}")
 
 # ---------- Routes ----------
+
+# Change password (only for logged-in admin)
+@app.route('/change-password', methods=['GET', 'POST'])
+def change_password():
+    if session.get("role") != "admin":
+        return redirect(url_for("login"))
+
+    if request.method == 'POST':
+        new_password = request.form['new_password']
+        user = User.query.filter_by(username=session.get("username")).first()
+        if user:
+            user.set_password(new_password)   # ✅ यहाँ भी set_password() use करना है
+            db.session.commit()
+            flash("Password updated successfully!", "success")
+            return redirect(url_for("dashboard"))
+        else:
+            flash("User not found!", "danger")
+
+    return '''
+        <form method="post">
+            <label>New Password:</label><br>
+            <input type="password" name="new_password"><br><br>
+            <input type="submit" value="Change Password">
+        </form>
+    '''
 
 @app.route("/")
 def home():
@@ -39,8 +70,8 @@ def home():
 
 @app.route("/products")
 def products():
-    q = request.args.get("q","").strip()
-    category = request.args.get("category","")
+    q = request.args.get("q", "").strip()
+    category = request.args.get("category", "")
     query = Product.query
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
@@ -64,7 +95,7 @@ def track(product_id):
     return redirect(p.link)
 
 # Authentication
-@app.route("/login", methods=["GET","POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         u = User.query.filter_by(username=request.form["username"]).first()
@@ -94,8 +125,8 @@ def dashboard():
     categories = sorted({p.category for p in products if p.category})
     return render_template("dashboard.html", products=products, categories=categories)
 
-@app.route("/product/add", methods=["GET","POST"])
-@app.route("/product/edit/<int:product_id>", methods=["GET","POST"])
+@app.route("/product/add", methods=["GET", "POST"])
+@app.route("/product/edit/<int:product_id>", methods=["GET", "POST"])
 def add_edit_product(product_id=None):
     if not admin_required():
         return redirect(url_for("login"))
@@ -117,15 +148,22 @@ def add_edit_product(product_id=None):
         elif img_url:
             filename = img_url
         if product:
-            product.name=name; product.price=price; product.category=category
-            product.link=link; product.description=description; product.sku=sku
-            product.source=source; product.availability=availability
+            product.name = name
+            product.price = price
+            product.category = category
+            product.link = link
+            product.description = description
+            product.sku = sku
+            product.source = source
+            product.availability = availability
             if filename:
-                product.image=filename
+                product.image = filename
         else:
-            product = Product(name=name, price=price, category=category, link=link,
-                              description=description, sku=sku, source=source,
-                              availability=availability, image=filename)
+            product = Product(
+                name=name, price=price, category=category, link=link,
+                description=description, sku=sku, source=source,
+                availability=availability, image=filename
+            )
             db.session.add(product)
         db.session.commit()
         flash("Product saved", "success")
@@ -143,11 +181,12 @@ def delete_product(product_id):
     return redirect(url_for("dashboard"))
 
 # CSV import
-@app.route("/import", methods=["GET","POST"])
+@app.route("/import", methods=["GET", "POST"])
 def import_products():
     if not admin_required():
         return redirect(url_for("login"))
-    errors = []; success = None
+    errors = []
+    success = None
     if request.method == "POST":
         f = request.files.get("csv")
         if not f:
@@ -157,7 +196,7 @@ def import_products():
         try:
             text = io.TextIOWrapper(f, encoding="utf-8")
             reader = csv.DictReader(text)
-            for i,row in enumerate(reader, start=1):
+            for i, row in enumerate(reader, start=1):
                 try:
                     p = Product(
                         name=row.get("name") or f"row-{i}",
@@ -190,9 +229,9 @@ def analytics():
     if not admin_required():
         return redirect(url_for("login"))
     last_week = datetime.utcnow() - timedelta(days=7)
-    results = db.session.query(Product.id, Product.name, func.count(Click.id))\
+    results = db.session.query(Product.id, Product.name, func.count(Click.id)) \
         .outerjoin(Click).filter(Click.timestamp >= last_week).group_by(Product.id).all()
-    total = sum([c for _,_,c in results])
+    total = sum([c for _, _, c in results])
     return render_template("analytics.html", results=results, last_week_clicks=total)
 
 # Jobs page (placeholders for scheduling)
@@ -200,13 +239,14 @@ def analytics():
 def jobs():
     if not admin_required():
         return redirect(url_for("login"))
-    # placeholders. For production use cron/Cloud scheduler to run sync tasks.
-    return render_template("jobs.html", last_price_sync=None, next_price_sync=None, last_auto_import=None, last_auto_delete=None)
+    return render_template("jobs.html", last_price_sync=None, next_price_sync=None,
+                           last_auto_import=None, last_auto_delete=None)
 
-# Static image route optional (Flask serves static by default)
+# Static image route
 @app.route("/static/images/<path:filename>")
 def images(filename):
-    return send_from_directory(os.path.join(app.root_path,"static","images"), filename)
+    return send_from_directory(os.path.join(app.root_path, "static", "images"), filename)
 
+# Main entry
 if __name__ == "__main__":
     app.run(debug=True)
